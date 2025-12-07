@@ -4,15 +4,21 @@
 source "$(dirname "$0")/.env"
 
 DATE=$(date +"%Y-%m-%d_%H-%M")
-BACKUP_FILE="${DB_NAME}_backup_${DATE}.sql.gz"
+BACKUP_FILE="${DB_NAME}_backup_${DATE}.zip"
 FULL_BACKUP_PATH="${BACKUP_DIR}/${BACKUP_FILE}"
 
 # Ensure backup directory exists
 mkdir -p "$BACKUP_DIR"
 
-# Dump and compress PostgreSQL DB with proper error handling
-if ! pg_dump -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" "$DB_NAME" | gzip > "$FULL_BACKUP_PATH"; then
-    echo "[ERROR] Backup failed: pg_dump failed or database does not exist"
+# Get backup from Odoo via web/database/backup endpoint
+echo "[INFO] Requesting backup from Odoo..."
+if ! curl -X POST "${ODOO_URL}/web/database/backup" \
+    -F "master_pwd=${ODOO_MASTER_PASSWORD}" \
+    -F "name=${DB_NAME}" \
+    -F "backup_format=zip" \
+    -o "$FULL_BACKUP_PATH" \
+    --fail --silent --show-error; then
+    echo "[ERROR] Backup failed: curl request to Odoo failed"
     exit 1
 fi
 
@@ -28,7 +34,7 @@ echo "[INFO] Uploaded to DO Spaces"
 
 # Delete older local backups (keep only 3)
 cd "$BACKUP_DIR" || exit
-ls -tp *.gz | grep -v '/$' | tail -n +4 | xargs -r rm --
+ls -tp *.zip | grep -v '/$' | tail -n +4 | xargs -r rm --
 
 # Delete older backups from DO Spaces (keep only 3)
 s3cmd ls "s3://${DO_SPACE_BUCKET}/${DO_SPACE_PATH}" | \
