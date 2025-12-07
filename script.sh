@@ -13,7 +13,7 @@ mkdir -p "$BACKUP_DIR"
 # Get backup from Odoo via web/database/backup endpoint
 echo "[INFO] Requesting backup from Odoo..."
 if ! curl -X POST "${ODOO_URL}/web/database/backup" \
-    -F "master_pwd=${ODOO_MASTER_PASSWORD}" \
+    -F "master_pwd=${MASTER_KEY}" \
     -F "name=${DB_NAME}" \
     -F "backup_format=zip" \
     -o "$FULL_BACKUP_PATH" \
